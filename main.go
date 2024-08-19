@@ -1,4 +1,4 @@
-package main
+package Pokedex
 
 import (
 	"bufio"
@@ -11,6 +11,25 @@ type cliCommand struct {
 	name        string
 	description string
 	callback    func() error
+}
+
+var exit = make(chan struct{})
+
+var cliCommandMap map[string]cliCommand
+
+func initCommands() {
+	cliCommandMap = map[string]cliCommand{
+		"help": {
+			name:        "help",
+			description: "Displays a help message",
+			callback:    commandHelp,
+		},
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
+	}
 }
 
 func commandHelp() error {
@@ -31,43 +50,26 @@ func commandHelp() error {
 
 func commandExit() error {
 	// Implementation here
+	exit <- struct{}{}
 	return nil
 }
 
-var cliCommandMap = map[string]cliCommand{
-	"help": {
-		name:        "help",
-		description: "Displays a help message",
-		callback:    commandHelp,
-	},
-	"exit": {
-		name:        "exit",
-		description: "Exit the Pokedex",
-		callback:    commandExit,
-	},
-}
-
-func receiveCli(exit *ch) error {
+func receiveCli(exit *chan struct{}) {
 	go func() {
 		reader := bufio.NewReader(os.Stdin)
 		for {
-			fmt.Print("Pokedex >")
+			fmt.Print("Pokedex > ")
 			command, _ := reader.ReadString('\n')
 			command = strings.TrimSpace(command)
-
+			if cmd, ok := cliCommandMap[command]; ok {
+				cmd.callback()
+			}
 		}
 	}()
 }
 
 func main() {
-	exit := make(ch, struct{})
-	exit <- receiveCli(exit)
-}
-
-func main() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your name: ")
-	name, _ := reader.ReadString('\n')
-	name = strings.TrimSpace(name)
-	fmt.Printf("Hello, %s!\n", name)
+	initCommands()
+	receiveCli(&exit)
+	<-exit
 }
