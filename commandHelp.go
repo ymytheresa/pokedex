@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ymytheresa/pokedex/types"
 )
 
-func commandHelp() error {
+func commandHelp(_ *types.Config) error {
 	var output strings.Builder
 	output.WriteString("Welcome to the Pokedex!\n")
 	output.WriteString("Usage:\n\n")

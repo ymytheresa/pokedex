@@ -1,8 +1,12 @@
 package main
 
-import "os"
+import (
+	"os"
 
-func commandExit() error {
+	"github.com/ymytheresa/pokedex/types"
+)
+
+func commandExit(_ *types.Config) error {
 	os.Exit(0)
 	return nil
 }

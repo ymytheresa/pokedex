@@ -5,12 +5,20 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/ymytheresa/pokedex/types"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*types.Config) error
+}
+
+func initConfig() *types.Config {
+	return &types.Config{
+		NextUrl: "https://pokeapi.co/api/v2/location-area/?limit=20&offset=0",
+	}
 }
 
 func getCliCommandMap() map[string]cliCommand {
@@ -40,12 +48,13 @@ func getCliCommandMap() map[string]cliCommand {
 
 func receiveCli() {
 	reader := bufio.NewReader(os.Stdin)
+	cf := initConfig()
 	for {
 		fmt.Print("Pokedex > ")
 		command, _ := reader.ReadString('\n')
 		commandSlice := cleanCmd(command)
 		if cmd, ok := getCliCommandMap()[commandSlice[0]]; ok {
-			err := cmd.callback()
+			err := cmd.callback(cf)
 			if err != nil {
 				fmt.Println(err)
 			}
