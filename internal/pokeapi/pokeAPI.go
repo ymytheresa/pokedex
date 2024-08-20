@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 
 	"github.com/ymytheresa/pokedex/types"
 )
@@ -19,7 +20,7 @@ type pokedexLocationAPI struct {
 	} `json:"results"`
 }
 
-httpCli := NewClient(10)
+var httpCli = NewClient(10)
 
 func PokedexGetLocation(cf *types.Config, next bool) {
 	var url string
@@ -34,12 +35,18 @@ func PokedexGetLocation(cf *types.Config, next bool) {
 		return
 	}
 
-	res, err := httpCli.Get(url)
+	request, err := http.NewRequest(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	body, err := io.ReadAll(res.Body)
+	response, err := httpCli.Do(request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
 	res.Body.Close()
 	if res.StatusCode > 299 {
 		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
