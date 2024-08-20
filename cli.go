@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ymytheresa/pokedex/internal/pokecache"
 	"github.com/ymytheresa/pokedex/types"
 )
 
@@ -49,6 +50,7 @@ func getCliCommandMap() map[string]cliCommand {
 func receiveCli() {
 	reader := bufio.NewReader(os.Stdin)
 	cf := initConfig()
+	pokecache.NewCache(5)
 	for {
 		fmt.Print("Pokedex > ")
 		command, _ := reader.ReadString('\n')

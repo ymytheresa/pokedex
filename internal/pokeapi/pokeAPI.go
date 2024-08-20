@@ -6,7 +6,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/ymytheresa/pokedex/internal/pokecache"
 	"github.com/ymytheresa/pokedex/types"
 )
 
@@ -20,36 +22,46 @@ type pokedexLocationAPI struct {
 	} `json:"results"`
 }
 
-var httpCli = NewClient(10)
+var httpCli Client = NewClient(100 * time.Second)
 
 func PokedexGetLocation(cf *types.Config, next bool) {
 	var url string
+
 	if next {
 		url = cf.NextUrl
 	} else {
 		url = cf.PrevUrl
 	}
 
+	exist := checkAndPrintFromMem(url)
+	if exist {
+		return
+	}
+
+	addToMemAndPrint(url, cf)
+}
+
+func addToMemAndPrint(url string, cf *types.Config) {
 	if url == "" {
 		fmt.Println("Reached first page")
 		return
 	}
 
-	request, err := http.NewRequest(url)
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	response, err := httpCli.Do(request)
+	response, err := httpCli.httpClient.Do(request)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	response.Body.Close()
+	if response.StatusCode > 299 {
+		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", response.StatusCode, body)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -63,8 +75,25 @@ func PokedexGetLocation(cf *types.Config, next bool) {
 
 	cf.NextUrl = apiResults.Next
 	cf.PrevUrl = apiResults.Previous
+	cacheEntryVal := make([]string, 20)
 	for _, res := range apiResults.Results {
-		fmt.Println(res.Name)
+		cacheEntryVal = append(cacheEntryVal, res.Name)
 	}
+	pokecache.GetPokedexCacheInstance().Add(url, cacheEntryVal)
+	printLocation(cacheEntryVal)
+}
 
+func checkAndPrintFromMem(url string) bool {
+	val, ok := pokecache.GetPokedexCacheInstance().Get(url)
+	if !ok {
+		return false
+	}
+	printLocation(val)
+	return true
+}
+
+func printLocation(val []string) {
+	for _, name := range val {
+		fmt.Println(name)
+	}
 }
