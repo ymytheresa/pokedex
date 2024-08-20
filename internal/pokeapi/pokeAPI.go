@@ -12,16 +12,6 @@ import (
 	"github.com/ymytheresa/pokedex/types"
 )
 
-type pokedexLocationAPI struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
 var httpCli Client = NewClient(100 * time.Second)
 
 func PokedexGetLocation(cf *types.Config, next bool) {
@@ -38,36 +28,44 @@ func PokedexGetLocation(cf *types.Config, next bool) {
 		return
 	}
 
-	addToMemAndPrint(url, cf)
+	addToMemAndPrintLocation(url, cf)
 }
 
-func addToMemAndPrint(url string, cf *types.Config) {
+func callAPI(url string) ([]byte, error) {
 	if url == "" {
-		fmt.Println("Reached first page")
-		return
+		return []byte{}, fmt.Errorf("reached first page")
 	}
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to create new request: %w", err)
 	}
 
 	response, err := httpCli.httpClient.Do(request)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
-	response.Body.Close()
-	if response.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", response.StatusCode, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	if response.StatusCode > 299 {
+		return nil, fmt.Errorf("response failed with status code: %d and body: %s", response.StatusCode, body)
+	}
+
+	return body, nil
+}
+
+func addToMemAndPrintLocation(url string, cf *types.Config) {
+	body, err := callAPI(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var apiResults pokedexLocationAPI
+	var apiResults types.PokedexLocationAPI
 	err = json.Unmarshal(body, &apiResults)
 	if err != nil {
 		log.Fatal(err)
@@ -80,7 +78,7 @@ func addToMemAndPrint(url string, cf *types.Config) {
 		cacheEntryVal = append(cacheEntryVal, res.Name)
 	}
 	pokecache.GetPokedexCacheInstance().Add(url, cacheEntryVal)
-	printLocation(cacheEntryVal)
+	printStringSlice(cacheEntryVal)
 }
 
 func checkAndPrintFromMem(url string) bool {
@@ -88,12 +86,36 @@ func checkAndPrintFromMem(url string) bool {
 	if !ok {
 		return false
 	}
-	printLocation(val)
+	printStringSlice(val)
 	return true
 }
 
-func printLocation(val []string) {
+func printStringSlice(val []string) {
 	for _, name := range val {
 		fmt.Println(name)
 	}
+}
+
+func PokedexGetPokemon(name string) {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s", name)
+	body, err := callAPI(url)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+	var apiResults types.PokedexPokemonByLocationAPI
+	err = json.Unmarshal(body, &apiResults)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	cacheEntryVal := make([]string, 0)
+	for _, encounter := range apiResults.PokemonEncounters {
+		cacheEntryVal = append(cacheEntryVal, encounter.Pokemon.Name)
+	}
+	pokecache.GetPokedexCacheInstance().Add(url, cacheEntryVal)
+	fmt.Printf("Exploring %s...\n", name)
+	fmt.Println("Found Pokemon:")
+	printStringSlice(cacheEntryVal)
 }

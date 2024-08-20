@@ -44,6 +44,11 @@ func getCliCommandMap() map[string]cliCommand {
 			description: "Show last page of map",
 			callback:    commandMapBack,
 		},
+		"explore": {
+			name:        "explore",
+			description: "show pokemon list of that location area",
+			callback:    commandExplore,
+		},
 	}
 }
 
@@ -56,6 +61,7 @@ func receiveCli() {
 		command, _ := reader.ReadString('\n')
 		commandSlice := cleanCmd(command)
 		if cmd, ok := getCliCommandMap()[commandSlice[0]]; ok {
+			cf.CmdSlice = commandSlice
 			err := cmd.callback(cf)
 			if err != nil {
 				fmt.Println(err)
