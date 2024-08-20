@@ -1,11 +1,10 @@
-package internal
+package pokeapi
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 
 	"github.com/ymytheresa/pokedex/types"
 )
@@ -20,6 +19,8 @@ type pokedexLocationAPI struct {
 	} `json:"results"`
 }
 
+httpCli := NewClient(10)
+
 func PokedexGetLocation(cf *types.Config, next bool) {
 	var url string
 	if next {
@@ -33,7 +34,7 @@ func PokedexGetLocation(cf *types.Config, next bool) {
 		return
 	}
 
-	res, err := http.Get(url)
+	res, err := httpCli.Get(url)
 	if err != nil {
 		log.Fatal(err)
 	}
