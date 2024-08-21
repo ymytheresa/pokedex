@@ -37,10 +37,22 @@ func catchPokemonAndPrint(baseExp int, name string) {
 	printSlice := []string{fmt.Sprintf("Throwing a Pokeball at %s...", name)}
 	if successRate > 50 {
 		printSlice = append(printSlice, fmt.Sprintf("%s was caught!", name))
+		addToPokedex(name)
 	} else {
 		printSlice = append(printSlice, fmt.Sprintf("%s escaped!", name))
 	}
 	for _, name := range printSlice {
 		fmt.Println(name)
 	}
+}
+
+func addToPokedex(name string) {
+	pokemonList, _ := pokecache.GetPokedexCacheInstance().Get("localPokedex")
+	for _, pokemon := range pokemonList {
+		if pokemon == name {
+			return
+		}
+	}
+	pokemonList = append(pokemonList, name)
+	pokecache.GetPokedexCacheInstance().Add("localPokedex", pokemonList)
 }

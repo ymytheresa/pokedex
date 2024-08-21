@@ -35,6 +35,9 @@ func cleanUpCache(c Cache) {
 
 	mem := c.cacheMemory
 	for key, valueEntry := range mem {
+		if key == "localPokedex" {
+			continue //do not clear record of caught pet
+		}
 		expiryTime := time.Now().Add(-c.interval)
 		if valueEntry.createdAt.Before(expiryTime) {
 			delete(mem, key)
@@ -60,7 +63,7 @@ func (c Cache) Get(key string) ([]string, bool) {
 	if ok {
 		return value.val, true
 	}
-	return nil, false
+	return []string{}, false
 }
 
 func NewCache(interval time.Duration) *Cache {

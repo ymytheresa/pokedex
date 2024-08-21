@@ -151,3 +151,10 @@ func PokedexCatchPokemon(name string) (string, int, bool) {
 		return url, baseExp, true
 	}
 }
+
+func FetchCaughtList() {
+	val, ok := pokecache.GetPokedexCacheInstance().Get("localPokedex")
+	if ok {
+		printStringSlice(val)
+	}
+}
