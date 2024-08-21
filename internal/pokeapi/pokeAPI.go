@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand/v2"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ymytheresa/pokedex/internal/pokecache"
@@ -23,8 +25,8 @@ func PokedexGetLocation(cf *types.Config, next bool) {
 		url = cf.PrevUrl
 	}
 
-	exist := checkAndPrintFromMem(url)
-	if exist {
+	_, ok := checkAndPrintFromMem(url, true)
+	if ok {
 		return
 	}
 
@@ -81,13 +83,15 @@ func addToMemAndPrintLocation(url string, cf *types.Config) {
 	printStringSlice(cacheEntryVal)
 }
 
-func checkAndPrintFromMem(url string) bool {
+func checkAndPrintFromMem(url string, print bool) ([]string, bool) {
 	val, ok := pokecache.GetPokedexCacheInstance().Get(url)
 	if !ok {
-		return false
+		return []string{}, false
 	}
-	printStringSlice(val)
-	return true
+	if print {
+		printStringSlice(val)
+	}
+	return val, true
 }
 
 func printStringSlice(val []string) {
@@ -98,6 +102,12 @@ func printStringSlice(val []string) {
 
 func PokedexGetPokemon(name string) {
 	url := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s", name)
+
+	_, ok := checkAndPrintFromMem(url, true)
+	if ok {
+		return
+	}
+
 	body, err := callAPI(url)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -118,4 +128,55 @@ func PokedexGetPokemon(name string) {
 	fmt.Printf("Exploring %s...\n", name)
 	fmt.Println("Found Pokemon:")
 	printStringSlice(cacheEntryVal)
+}
+
+func PokedexCatchPokemon(name string) {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", name)
+
+	val, ok := checkAndPrintFromMem(url, false)
+	var baseExp int
+	var successChanceInStringSlice []string
+	var successChanceInFloat float64
+	if !ok {
+		body, err := callAPI(url)
+		if err != nil {
+			fmt.Printf("Error when call API: %v\n", err)
+			return
+		}
+		var apiResults types.PokedexPokemonAPI
+		err = json.Unmarshal(body, &apiResults)
+		if err != nil {
+			fmt.Printf("Error when unmarshal: %v\n", err)
+			return
+		}
+		baseExp = apiResults.BaseExperience //int
+		successChanceInStringSlice, successChanceInFloat = calcCatchSuccessRate(baseExp)
+		pokecache.GetPokedexCacheInstance().Add(url, successChanceInStringSlice)
+	} else {
+		successChanceInFloat, _ = strconv.ParseFloat(val[0], 64) // string to float
+	}
+	catchPokemonAndPrint(successChanceInFloat, name)
+}
+
+func calcCatchSuccessRate(sBase int) ([]string, float64) {
+	maxBase := 608 * 1.1 //Blissey's base experience 608, hightest amoung all pokemons, ensure 10% for this as a baseline
+	fRate := 1 - (float64(sBase) / maxBase)
+	return []string{fmt.Sprintf("%f", fRate)}, fRate
+}
+
+func catchPokemonAndPrint(rate float64, name string) {
+	var successRate float64
+	if rand.Float64() <= rate/100 {
+		successRate = rand.Float64()*50 + 50
+	} else {
+		successRate = rand.Float64() * 50
+	}
+
+	printSlice := []string{fmt.Sprintf("Throwing a Pokeball at %s...", name)}
+	if successRate > 0.5 {
+		printSlice = append(printSlice, fmt.Sprintf("%s was caught!", name))
+	} else {
+		printSlice = append(printSlice, fmt.Sprintf("%s escaped!", name))
+	}
+	printStringSlice(printSlice)
 }
