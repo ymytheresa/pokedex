@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"time"
@@ -130,53 +129,25 @@ func PokedexGetPokemon(name string) {
 	printStringSlice(cacheEntryVal)
 }
 
-func PokedexCatchPokemon(name string) {
+func PokedexCatchPokemon(name string) (string, int, bool) {
 	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", name)
 
 	val, ok := checkAndPrintFromMem(url, false)
-	var baseExp int
-	var successChanceInStringSlice []string
-	var successChanceInFloat float64
 	if !ok {
 		body, err := callAPI(url)
 		if err != nil {
 			fmt.Printf("Error when call API: %v\n", err)
-			return
+			return url, 0, false
 		}
 		var apiResults types.PokedexPokemonAPI
 		err = json.Unmarshal(body, &apiResults)
 		if err != nil {
 			fmt.Printf("Error when unmarshal: %v\n", err)
-			return
+			return url, 0, false
 		}
-		baseExp = apiResults.BaseExperience //int
-		successChanceInStringSlice, successChanceInFloat = calcCatchSuccessRate(baseExp)
-		pokecache.GetPokedexCacheInstance().Add(url, successChanceInStringSlice)
+		return url, apiResults.BaseExperience, false
 	} else {
-		successChanceInFloat, _ = strconv.ParseFloat(val[0], 64) // string to float
+		baseExp, _ := strconv.Atoi(val[0])
+		return url, baseExp, true
 	}
-	catchPokemonAndPrint(successChanceInFloat, name)
-}
-
-func calcCatchSuccessRate(sBase int) ([]string, float64) {
-	maxBase := 608 * 1.1 //Blissey's base experience 608, hightest amoung all pokemons, ensure 10% for this as a baseline
-	fRate := 1 - (float64(sBase) / maxBase)
-	return []string{fmt.Sprintf("%f", fRate)}, fRate
-}
-
-func catchPokemonAndPrint(rate float64, name string) {
-	var successRate float64
-	if rand.Float64() <= rate/100 {
-		successRate = rand.Float64()*50 + 50
-	} else {
-		successRate = rand.Float64() * 50
-	}
-
-	printSlice := []string{fmt.Sprintf("Throwing a Pokeball at %s...", name)}
-	if successRate > 0.5 {
-		printSlice = append(printSlice, fmt.Sprintf("%s was caught!", name))
-	} else {
-		printSlice = append(printSlice, fmt.Sprintf("%s escaped!", name))
-	}
-	printStringSlice(printSlice)
 }
