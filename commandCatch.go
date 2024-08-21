@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
-	"math/rand/v2"
+	"math/rand"
+	"strconv"
+	"time"
 
 	"github.com/ymytheresa/pokedex/internal/pokeapi"
 	"github.com/ymytheresa/pokedex/internal/pokecache"
@@ -12,31 +14,28 @@ import (
 func commandCatch(cf *types.Config) error {
 	name := cf.CmdSlice[1]
 	url, baseExp, inCache := pokeapi.PokedexCatchPokemon(name)
-	successChanceInStringSlice, successChanceInFloat := calcCatchSuccessRate(baseExp)
+	baseExpStringSlice := []string{strconv.Itoa(baseExp)}
 	if !inCache {
-		pokecache.GetPokedexCacheInstance().Add(url, successChanceInStringSlice)
+		pokecache.GetPokedexCacheInstance().Add(url, baseExpStringSlice)
 	}
-	catchPokemonAndPrint(successChanceInFloat, name)
+	catchPokemonAndPrint(baseExp, name)
 	return nil
 }
 
-func calcCatchSuccessRate(sBase int) ([]string, float64) {
+func catchPokemonAndPrint(baseExp int, name string) {
 	maxBase := 608 * 1.1 //Blissey's base experience 608, hightest amoung all pokemons, ensure 10% for this as a baseline
-	fRate := 1 - (float64(sBase) / maxBase)
-	fmt.Println(sBase, fRate)
-	return []string{fmt.Sprintf("%f", fRate)}, fRate
-}
+	rate := 1 - (float64(baseExp) / maxBase)
 
-func catchPokemonAndPrint(rate float64, name string) {
 	var successRate float64
-	if rand.Float64() <= rate/100 {
-		successRate = rand.Float64()*50 + 50
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	if r.Float64() <= rate {
+		successRate = r.Float64()*50 + 50
 	} else {
-		successRate = rand.Float64() * 50
+		successRate = r.Float64() * 50
 	}
 
 	printSlice := []string{fmt.Sprintf("Throwing a Pokeball at %s...", name)}
-	if successRate > 0.5 {
+	if successRate > 50 {
 		printSlice = append(printSlice, fmt.Sprintf("%s was caught!", name))
 	} else {
 		printSlice = append(printSlice, fmt.Sprintf("%s escaped!", name))
